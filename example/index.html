@@ -1,0 +1,47 @@
+<!doctype html>
+
+<html 
+  lang="en" 
+  ng-app="macTable"
+  ng-controller="ExampleController">
+<head>
+  <meta charset="utf-8">
+  <title>MacGyver Table</title>
+  <style>
+    table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    .selected {
+      background: #e1e1e1;
+    }
+  </style>
+</head>
+<body>
+  <table mac-table 
+         mac-table-columns="tableColumns">
+    <tbody mac-table-section="body" 
+           mac-table-section-models="tableModels"
+           mac-table-section-selected-models="table.$parent.selectedModels">
+      <tr mac-table-row 
+          mac-table-selectable="true"
+          ng-class="{selected: row.selected}">
+        <td mac-cell-template="" 
+            width="{{cell.column.width}}">
+          {{cell.value()}}
+        </td>
+      </tr>
+    </tbody>
+    <tbody>
+      <tr>
+        <td ng-repeat="column in table.columns">
+          <input ng-model="table.$parent.rowData[column.colName]">
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <button ng-click="addRow(rowData)">New</button>
+  <button ng-click="addOneThousandRows()">Add 1000 Rows</button>
+  <script src="main.js"></script>
+</body>
+</html>

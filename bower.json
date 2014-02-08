@@ -1,0 +1,17 @@
+{
+  "name": "angular-macgyver-table",
+  "version": "0.0.0",
+  "description": "Angular MacGyver table",
+  "main": "macTable.min.js",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "angular-mocks": "~1.2.12"
+  }
+}
