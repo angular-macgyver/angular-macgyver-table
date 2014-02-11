@@ -9,7 +9,7 @@ var tableSectionModelsDirective = function () {
         models = scope.$eval(attrs.macTableSectionModels);
         if (!models) return;
         controller.build(models);
-        return JSON.stringify(controller.table.sections[attrs.macTableSection]);
+        return JSON.stringify(controller.table);
       });
     }
   };

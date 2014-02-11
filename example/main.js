@@ -20903,8 +20903,7 @@ var ExampleController = ['$scope', function ($scope) {
   $scope.addRow = function (rowData) {
     $scope.tableModels.push(angular.copy(rowData));
   };
-  $scope.addOneThousandRows = function () {
-    var count = 1000;
+  $scope.addRows = function (count) {
     while (count--) {
       $scope.tableModels.push({name: 'blah', twitter: '@blah'});
     }
@@ -20918,6 +20917,7 @@ module.exports = ExampleController;
 
 var TableSectionController = function ($scope, $element, $attrs) {
   this.rowCellTemplates = {};
+  this.rowsMap = {};
   this.rowCellsMaps = {};
   this.rowTemplate = null;
   this.table = null;
@@ -20963,7 +20963,7 @@ var TableSectionController = function ($scope, $element, $attrs) {
     $scope.section = section = this.table.sections[$attrs.macTableSection];
     rows = section.ctrl.getRows();
 
-    lastRowsMap = this.rowsMap || {};
+    lastRowsMap = this.rowsMap;
     nextRowsMap = {};
 
     for (i = 0, ii = rows.length; i < ii; i++) {
@@ -21003,10 +21003,10 @@ var TableSectionController = function ($scope, $element, $attrs) {
         colName = cell.column.colName;
 
         if (lastCellsMap.hasOwnProperty(colName)) {
-          nextCellsMap[colName] = cellBlock = lastCellsMap[colName];
+          cellBlock = lastCellsMap[colName];
           delete lastCellsMap[colName];
         } else {
-          nextCellsMap[colName] = cellBlock = {};
+          cellBlock = {};
         }
 
         if (cellBlock.scope) {
@@ -21033,9 +21033,7 @@ var TableSectionController = function ($scope, $element, $attrs) {
       }
 
       for (colName in lastCellsMap) {
-        lastCellsMap[colName].clone.remove();
-        lastCellsMap[colName].scope.$destroy();
-        delete lastCellsMap[colName];
+        this.cleanUnusedCellsMap(colName, lastCellsMap);
       }
 
       this.rowCellsMaps[row.id] = nextCellsMap;
@@ -21043,13 +21041,25 @@ var TableSectionController = function ($scope, $element, $attrs) {
 
     // Removed any unused rows and delete them from the rows cells map
     for (var key in lastRowsMap) {
-      lastRowsMap[key].clone.remove();
-      lastRowsMap[key].scope.$destroy();
-      delete lastRowsMap[key];
+      this.cleanUnusedRowsMap(key, lastRowsMap);
     }
 
     this.rowsMap = nextRowsMap;
   };
+
+  this.cleanUnusedCellsMap = function (colName, cellsMap) {
+    cellsMap[colName].clone.remove();
+    cellsMap[colName].scope.$destroy();
+    delete cellsMap[colName];
+  };
+
+  this.cleanUnusedRowsMap = function (rowId, rowsMap) {
+    rowsMap[rowId].clone.remove();
+    rowsMap[rowId].scope.$destroy();
+    delete rowsMap[rowId];
+  };
+
+
 };
 
 module.exports = TableSectionController;
@@ -21252,7 +21262,7 @@ var tableSectionModelsDirective = function () {
         models = scope.$eval(attrs.macTableSectionModels);
         if (!models) return;
         controller.build(models);
-        return JSON.stringify(controller.table.sections[attrs.macTableSection]);
+        return JSON.stringify(controller.table);
       });
     }
   };

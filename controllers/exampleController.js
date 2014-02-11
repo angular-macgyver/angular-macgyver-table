@@ -13,8 +13,7 @@ var ExampleController = ['$scope', function ($scope) {
   $scope.addRow = function (rowData) {
     $scope.tableModels.push(angular.copy(rowData));
   };
-  $scope.addOneThousandRows = function () {
-    var count = 1000;
+  $scope.addRows = function (count) {
     while (count--) {
       $scope.tableModels.push({name: 'blah', twitter: '@blah'});
     }
