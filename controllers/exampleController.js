@@ -1,6 +1,6 @@
 'use strict';
 
-var ExampleController = ['$scope', function ($scope) {
+var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
   $scope.test = 'Hello World';
 
   $scope.selectedModels = [];
@@ -17,6 +17,17 @@ var ExampleController = ['$scope', function ($scope) {
     while (count--) {
       $scope.tableModels.push({name: 'blah', twitter: '@blah'});
     }
+  };
+  $scope.startQuickAddRemove = function () {
+    $scope.quickAddRemovePromise = $timeout(function () {
+      if ($scope.tableModels.length) $scope.tableModels = [];
+      else $scope.addRows(50);
+      $scope.startQuickAddRemove();
+    }, 500);
+  };
+  $scope.stopQuickAddRemove = function () {
+    $timeout.cancel($scope.quickAddRemovePromise);
+    delete $scope.quickAddRemovePromise;
   };
 }];
 

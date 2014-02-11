@@ -20890,7 +20890,7 @@ module.exports = TableSection;
 },{}],6:[function(require,module,exports){
 'use strict';
 
-var ExampleController = ['$scope', function ($scope) {
+var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
   $scope.test = 'Hello World';
 
   $scope.selectedModels = [];
@@ -20907,6 +20907,17 @@ var ExampleController = ['$scope', function ($scope) {
     while (count--) {
       $scope.tableModels.push({name: 'blah', twitter: '@blah'});
     }
+  };
+  $scope.startQuickAddRemove = function () {
+    $scope.quickAddRemovePromise = $timeout(function () {
+      if ($scope.tableModels.length) $scope.tableModels = [];
+      else $scope.addRows(50);
+      $scope.startQuickAddRemove();
+    }, 500);
+  };
+  $scope.stopQuickAddRemove = function () {
+    $timeout.cancel($scope.quickAddRemovePromise);
+    delete $scope.quickAddRemovePromise;
   };
 }];
 
@@ -20942,6 +20953,7 @@ var TableSectionController = function ($scope, $element, $attrs) {
         section,
         row,
         rows,
+        rowId,
         rowBlock,
         childRowScope,
         nextRowsMap,
@@ -20968,12 +20980,13 @@ var TableSectionController = function ($scope, $element, $attrs) {
 
     for (i = 0, ii = rows.length; i < ii; i++) {
       row = rows[i];
+      rowId = row.id;
 
-      if (lastRowsMap.hasOwnProperty(row.id)) {
-        nextRowsMap[row.id] = rowBlock = lastRowsMap[row.id];
-        delete lastRowsMap[row.id];
+      if (typeof lastRowsMap[rowId] !== 'undefined') {
+        nextRowsMap[rowId] = rowBlock = lastRowsMap[rowId];
+        delete lastRowsMap[rowId];
       } else {
-        nextRowsMap[row.id] = rowBlock = {};
+        nextRowsMap[rowId] = rowBlock = {};
       }
 
       if (rowBlock.scope) {
@@ -20985,11 +20998,12 @@ var TableSectionController = function ($scope, $element, $attrs) {
       if (!rowBlock.scope) {
         childRowScope.row = row;
         rowBlock.scope = childRowScope;
-        this.rowTemplate(childRowScope, function (clone) {
+        this.rowTemplate(childRowScope, function rowTranscludeCB(clone) {
           $element[0].appendChild(clone[0]);
           rowBlock.clone = clone;
         });
       } else {
+        // Be smarter about this... don't append unless the order has changed
         $element[0].appendChild(rowBlock.clone[0]);
       }
 
@@ -21001,35 +21015,14 @@ var TableSectionController = function ($scope, $element, $attrs) {
       for (j = 0, jj = row.cells.length; j < jj; j++) {
         cell = row.cells[j];
         colName = cell.column.colName;
-
-        if (lastCellsMap.hasOwnProperty(colName)) {
-          cellBlock = lastCellsMap[colName];
-          delete lastCellsMap[colName];
-        } else {
-          cellBlock = {};
-        }
-
-        if (cellBlock.scope) {
-          childCellScope = cellBlock.scope;
-        } else {
-          childCellScope = childRowScope.$new();
-        }
-
-        if (!cellBlock.scope) {
-          childCellScope.cell = cell;
-          cellBlock.scope = childCellScope;
-          cellTransclude = this.getCellTranclude(cell);
-          if (cellTransclude) {
-            cellTransclude(childCellScope, function (clone) {
-              rowBlock.clone[0].appendChild(clone[0]);
-              cellBlock.clone = clone;
-            });
-          }
-        } else {
-          rowBlock.clone[0].appendChild(cellBlock.clone[0]);
-        }
-
-        nextCellsMap[colName] = cellBlock;
+        this.buildRowCells(
+            cell, 
+            colName, 
+            rowBlock, 
+            childRowScope, 
+            lastCellsMap, 
+            nextCellsMap
+        );
       }
 
       for (colName in lastCellsMap) {
@@ -21054,9 +21047,53 @@ var TableSectionController = function ($scope, $element, $attrs) {
   };
 
   this.cleanUnusedRowsMap = function (rowId, rowsMap) {
+    var cellsMap, colName;
     rowsMap[rowId].clone.remove();
     rowsMap[rowId].scope.$destroy();
     delete rowsMap[rowId];
+    // Remove all associated cells
+    cellsMap = this.rowCellsMaps[rowId];
+    for (colName in cellsMap) {
+      this.cleanUnusedCellsMap(colName, cellsMap);
+    }
+    delete this.rowCellsMaps[rowId];
+  };
+
+  this.buildRowCells = function (cell, colName, rowBlock, childRowScope, lastCellsMap, nextCellsMap) {
+    var cellBlock,
+        childCellScope,
+        cellTransclude;
+
+    if (typeof lastCellsMap[colName] !== 'undefined') {
+      cellBlock = lastCellsMap[colName];
+      delete lastCellsMap[colName];
+    } else {
+      cellBlock = {};
+    }
+
+    if (cellBlock.scope) {
+      childCellScope = cellBlock.scope;
+    } else {
+      // This should probably check for the cell tranclude before making a
+      // possibly unneeded scope
+      childCellScope = childRowScope.$new();
+    }
+
+    if (!cellBlock.scope) {
+      childCellScope.cell = cell;
+      cellBlock.scope = childCellScope;
+      cellTransclude = this.getCellTranclude(cell);
+      if (cellTransclude) {
+        cellTransclude(childCellScope, function cellTranscludeCB(clone) {
+          rowBlock.clone[0].appendChild(clone[0]);
+          cellBlock.clone = clone;
+        });
+      }
+    } else {
+      rowBlock.clone[0].appendChild(cellBlock.clone[0]);
+    }
+
+    nextCellsMap[colName] = cellBlock;
   };
 
 
@@ -21491,7 +21528,6 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
   Table.prototype.loadModels = function (sectionName, srcModels) {
     var orderedRows = [],
         sectionModels = [],
-        removedRows = [],
         section = this.sections[sectionName],
         models = convertObjectModelsToArray(srcModels),
         i, ii,
@@ -21501,15 +21537,11 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
         model;
 
     // Loop through the sections current rows
-    // if any models matched mark them as removed [1]
-    // otherwise, mark them as something to add [2]
     for (i = 0, ii = section.rows.length; i < ii; i++) {
       row = section.rows[i];
       rowIndex = models.indexOf(row.model);
-      if (rowIndex === -1) {
-        removedRows.push(row); /* [1] */
-      } else {
-        orderedRows[rowIndex] = row; /* [2] */
+      if (rowIndex !== -1) {
+        orderedRows[rowIndex] = row;
         sectionModels[rowIndex] = row.model;
       }
     }
@@ -21527,7 +21559,6 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
     // Replace the rows with our new rows in the correct order [5]
     // then store the removed rows on the section to check against [6]
     section.rows = orderedRows; /* [5] */
-    section.removedRows = removedRows; /* [6] */
   };
 
   /*

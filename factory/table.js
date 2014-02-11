@@ -80,7 +80,6 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
   Table.prototype.loadModels = function (sectionName, srcModels) {
     var orderedRows = [],
         sectionModels = [],
-        removedRows = [],
         section = this.sections[sectionName],
         models = convertObjectModelsToArray(srcModels),
         i, ii,
@@ -90,15 +89,11 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
         model;
 
     // Loop through the sections current rows
-    // if any models matched mark them as removed [1]
-    // otherwise, mark them as something to add [2]
     for (i = 0, ii = section.rows.length; i < ii; i++) {
       row = section.rows[i];
       rowIndex = models.indexOf(row.model);
-      if (rowIndex === -1) {
-        removedRows.push(row); /* [1] */
-      } else {
-        orderedRows[rowIndex] = row; /* [2] */
+      if (rowIndex !== -1) {
+        orderedRows[rowIndex] = row;
         sectionModels[rowIndex] = row.model;
       }
     }
@@ -116,7 +111,6 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
     // Replace the rows with our new rows in the correct order [5]
     // then store the removed rows on the section to check against [6]
     section.rows = orderedRows; /* [5] */
-    section.removedRows = removedRows; /* [6] */
   };
 
   /*
