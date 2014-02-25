@@ -1,21 +1,25 @@
 'use strict';
 
 var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
+  var counter = 0;
+
   $scope.test = 'Hello World';
 
   $scope.selectedModels = [];
   $scope.rowData = {};
   $scope.tableColumns = ['name', 'twitter'];
   $scope.tableModels = [
-    {name: 'Colin Kahn', twitter: '@programmingwtf'},
-    {name: 'Adrian Lee', twitter: '@adrianthemole'}
+    {id: counter++, name: 'Colin Kahn', twitter: '@programmingwtf'},
+    {id: counter++, name: 'Adrian Lee', twitter: '@adrianthemole'}
   ];
   $scope.addRow = function (rowData) {
-    $scope.tableModels.push(angular.copy(rowData));
+    var data = angular.copy(rowData);
+    data.id = counter++;
+    $scope.tableModels.push(data);
   };
   $scope.addRows = function (count) {
     while (count--) {
-      $scope.tableModels.push({name: 'blah', twitter: '@blah'});
+      $scope.tableModels.push({id: counter++, name: 'blah', twitter: '@blah'});
     }
   };
 
@@ -31,7 +35,7 @@ var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
       } else {
         quickAddRemoveCount = 0;
       }
-    }, 50);
+    }, 16);
   };
   $scope.stopQuickAddRemove = function () {
     $timeout.cancel($scope.quickAddRemovePromise);

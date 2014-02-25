@@ -42,10 +42,12 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
   /*
   * Table Class Constructor
   */
-  Table = function (columns) {
+  Table = function (columns, modelKey) {
     this.sections = {};
     this.columnsOrder = [];
     this.columnsMap = {};
+    this.modelsMap = {};
+    this.modelKey = modelKey || 'id';
 
     this.loadColumns(columns || []);
   };
@@ -79,31 +81,27 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
    */
   Table.prototype.loadModels = function (sectionName, srcModels) {
     var orderedRows = [],
-        sectionModels = [],
+        lastModelsMap = this.modelsMap,
+        nextModelsMap = {},
         section = this.sections[sectionName],
         models = convertObjectModelsToArray(srcModels);
 
-    // Loop through the sections current rows
-    angular.forEach(section.rows, function (row, index) {
-      var rowIndex = models.indexOf(row.model);
-      if (rowIndex !== -1) {
-        orderedRows[rowIndex] = row;
-        sectionModels[rowIndex] = row.model;
-      }
-    });
-
-    // Loop over the models passed in
-    // if the model hasn't already been added in move on [3]
-    // otherwise, create a new row for that model [4]
     angular.forEach(models, function (model, index) {
-      if (sectionModels.indexOf(model) === -1) { /* [3] */
+      var modelKeyValue = model[this.modelKey],
+          rowIndex;
+
+      if (typeof lastModelsMap[modelKeyValue] === 'undefined') { /* [3] */
         orderedRows[index] = this.newRow(section, model); /* [4] */
+      } else {
+        rowIndex = lastModelsMap[modelKeyValue];
+        orderedRows[index] = section.rows[rowIndex];
       }
+
+      nextModelsMap[modelKeyValue] = index;
     }, this);
 
-    // Replace the rows with our new rows in the correct order [5]
-    // then store the removed rows on the section to check against [6]
-    section.rows = orderedRows; /* [5] */
+    this.modelsMap = nextModelsMap;
+    section.rows   = orderedRows;
   };
 
   /*

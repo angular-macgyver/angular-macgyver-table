@@ -1,12 +1,13 @@
 'use strict';
 
-describe('Table section blank row directive', function () {
+describe('Table section models directive', function () {
   var columns = ['name', 'band', 'instrument'],
+      guid = 0,
       models = [
-        {name: 'Mick Jagger', band: 'Rolling Stones', instrument: 'vocals'},
-        {name: 'Ringo Star', band: 'Beatles', instrument: 'drums'},
-        {name: 'Paul McCartney', band: 'Beatles', instrument: 'bass'},
-        {name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
+        {id: guid++, name: 'Mick Jagger', band: 'Rolling Stones', instrument: 'vocals'},
+        {id: guid++, name: 'Ringo Star', band: 'Beatles', instrument: 'drums'},
+        {id: guid++, name: 'Paul McCartney', band: 'Beatles', instrument: 'bass'},
+        {id: guid++, name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
       ],
       $scope,
       $element,
@@ -43,9 +44,17 @@ describe('Table section blank row directive', function () {
     // Grow
     $scope.$apply(function () {
       $scope.models.unshift({
-        name: 'Keith Richards', instrument: 'guitar', band: 'Rolling Stones'});
+        id: guid++,
+        name: 'Keith Richards',
+        instrument: 'guitar',
+        band: 'Rolling Stones'
+      });
       $scope.models.unshift({
-        name: 'George Harrison', instrument: 'guitar', band: 'Beatles'});
+        id: guid++,
+        name: 'George Harrison',
+        instrument: 'guitar',
+        band: 'Beatles'
+      });
     });
     expect($element.find('tr').length).toBe(6);
 

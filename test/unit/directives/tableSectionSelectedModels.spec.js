@@ -2,11 +2,12 @@
 
 describe('Table section selected models directive', function () {
   var columns = ['name', 'band', 'instrument'],
+      guid = 0,
       models = [
-        {name: 'Mick Jagger', band: 'Rolling Stones', instrument: 'vocals'},
-        {name: 'Ringo Star', band: 'Beatles', instrument: 'drums'},
-        {name: 'Paul McCartney', band: 'Beatles', instrument: 'bass'},
-        {name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
+        {id: guid++, name: 'Mick Jagger', band: 'Rolling Stones', instrument: 'vocals'},
+        {id: guid++, name: 'Ringo Star', band: 'Beatles', instrument: 'drums'},
+        {id: guid++, name: 'Paul McCartney', band: 'Beatles', instrument: 'bass'},
+        {id: guid++, name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
       ],
       triggerKeyDown,
       triggerKeyUp,

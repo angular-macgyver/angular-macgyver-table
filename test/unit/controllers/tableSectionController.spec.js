@@ -11,7 +11,8 @@ describe('Table section controller', function () {
       $element,
       $rootScope,
       $animate,
-      section;
+      section,
+      guid;
 
   beforeEach(angular.mock.module('macTable'));
 
@@ -20,11 +21,13 @@ describe('Table section controller', function () {
         rowTransclude,
         cellTransclude;
 
+    guid = 0;
+
     models = [
-      {name: 'Mick Jagger', band: 'Rolling Stones', instrument: 'vocals'},
-      {name: 'Ringo Star', band: 'Beatles', instrument: 'drums'},
-      {name: 'Paul McCartney', band: 'Beatles', instrument: 'bass'},
-      {name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
+      {id: guid++, name: 'Mick Jagger', band: 'Rolling Stones', instrument: 'vocals'},
+      {id: guid++, name: 'Ringo Star', band: 'Beatles', instrument: 'drums'},
+      {id: guid++, name: 'Paul McCartney', band: 'Beatles', instrument: 'bass'},
+      {id: guid++, name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
     ];
 
     $element   = angular.element('<div />');
@@ -67,10 +70,16 @@ describe('Table section controller', function () {
 
     // Grow
     models.unshift({
-      name: 'Keith Richards', instrument: 'guitar', band: 'Rolling Stones'
+      id: guid++,
+      name: 'Keith Richards',
+      instrument: 'guitar',
+      band: 'Rolling Stones'
     });
     models.unshift({
-      name: 'George Harrison', instrument: 'guitar', band: 'Beatles'
+      id: guid++,
+      name: 'George Harrison',
+      instrument: 'guitar',
+      band: 'Beatles'
     });
     $rootScope.$apply(function () {
       tableSectionController.build(models);

@@ -89,12 +89,13 @@ describe('Table', function () {
     var table, models;
 
     beforeEach(function () {
+      var guid = 0;
       table = new Table();
       models = [
-        {name: 'Mick Jagger'},
-        {name: 'Ringo Star'},
-        {name: 'Paul McCartney'},
-        {name: 'John Lennon'}
+        {id: guid++, name: 'Mick Jagger'},
+        {id: guid++, name: 'Ringo Star'},
+        {id: guid++, name: 'Paul McCartney'},
+        {id: guid++, name: 'John Lennon'}
       ];
       table.load('body', models);
     });
