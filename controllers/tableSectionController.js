@@ -1,9 +1,10 @@
 'use strict';
 
 var TableSectionController = function ($scope, $element, $attrs, $animate) {
+
   this.rowCellTemplates = {};
   this.rowsMap          = {};
-  this.rowsOrder        = [];
+  this.rowsOrderMap     = {};
   this.rowCellsMaps     = {};
   this.rowTemplate      = null;
   this.table            = null;
@@ -40,11 +41,11 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
     /*
      * Build Rows
      */
-    var lastRowsMap     = this.rowsMap,
-        nextRowsMap     = {},
-        lastRowsOrder   = this.rowsOrder,
-        nextRowsOrder   = [],
-        previousElement = marker;
+    var lastRowsMap      = this.rowsMap,
+        nextRowsMap      = {},
+        lastRowsOrderMap = this.rowsOrderMap,
+        nextRowsOrderMap = [],
+        previousElement  = marker;
 
     angular.forEach(rows, function tableRepeatRows (row, index) {
       var rowId = row.id,
@@ -52,14 +53,13 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
           childRowScope;
 
       // Store the order of the rows so we can compare against them later
-      nextRowsOrder.push(rowId);
+      nextRowsOrderMap[rowId] = index;
 
       // Check if we already have a block for this row
       if (typeof lastRowsMap[rowId] !== 'undefined') {
         nextRowsMap[rowId] = rowBlock = lastRowsMap[rowId];
         delete lastRowsMap[rowId];
-        if (lastRowsOrder.indexOf(rowId) === index) {
-          console.log('no work!');
+        if (lastRowsOrderMap[rowId] === index) {
           previousElement = rowBlock.clone;
           return;
         }
@@ -117,7 +117,7 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
     }, this);
 
     this.rowsMap   = nextRowsMap;
-    this.rowsOrder = nextRowsOrder;
+    this.rowsOrderMap = nextRowsOrderMap;
   };
 
   this.buildRowCells = function (row, rowElement, childRowScope, columns) {

@@ -20935,9 +20935,10 @@ module.exports = ExampleController;
 'use strict';
 
 var TableSectionController = function ($scope, $element, $attrs, $animate) {
+
   this.rowCellTemplates = {};
   this.rowsMap          = {};
-  this.rowsOrder        = [];
+  this.rowsOrderMap     = {};
   this.rowCellsMaps     = {};
   this.rowTemplate      = null;
   this.table            = null;
@@ -20974,11 +20975,11 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
     /*
      * Build Rows
      */
-    var lastRowsMap     = this.rowsMap,
-        nextRowsMap     = {},
-        lastRowsOrder   = this.rowsOrder,
-        nextRowsOrder   = [],
-        previousElement = marker;
+    var lastRowsMap      = this.rowsMap,
+        nextRowsMap      = {},
+        lastRowsOrderMap = this.rowsOrderMap,
+        nextRowsOrderMap = [],
+        previousElement  = marker;
 
     angular.forEach(rows, function tableRepeatRows (row, index) {
       var rowId = row.id,
@@ -20986,14 +20987,13 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
           childRowScope;
 
       // Store the order of the rows so we can compare against them later
-      nextRowsOrder.push(rowId);
+      nextRowsOrderMap[rowId] = index;
 
       // Check if we already have a block for this row
       if (typeof lastRowsMap[rowId] !== 'undefined') {
         nextRowsMap[rowId] = rowBlock = lastRowsMap[rowId];
         delete lastRowsMap[rowId];
-        if (lastRowsOrder.indexOf(rowId) === index) {
-          console.log('no work!');
+        if (lastRowsOrderMap[rowId] === index) {
           previousElement = rowBlock.clone;
           return;
         }
@@ -21051,7 +21051,7 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
     }, this);
 
     this.rowsMap   = nextRowsMap;
-    this.rowsOrder = nextRowsOrder;
+    this.rowsOrderMap = nextRowsOrderMap;
   };
 
   this.buildRowCells = function (row, rowElement, childRowScope, columns) {
@@ -21535,32 +21535,25 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
     var orderedRows = [],
         sectionModels = [],
         section = this.sections[sectionName],
-        models = convertObjectModelsToArray(srcModels),
-        i, ii,
-        rowIndex,
-        row,
-        modelIndex,
-        model;
+        models = convertObjectModelsToArray(srcModels);
 
     // Loop through the sections current rows
-    for (i = 0, ii = section.rows.length; i < ii; i++) {
-      row = section.rows[i];
-      rowIndex = models.indexOf(row.model);
+    angular.forEach(section.rows, function (row, index) {
+      var rowIndex = models.indexOf(row.model);
       if (rowIndex !== -1) {
         orderedRows[rowIndex] = row;
         sectionModels[rowIndex] = row.model;
       }
-    }
+    });
 
     // Loop over the models passed in
     // if the model hasn't already been added in move on [3]
     // otherwise, create a new row for that model [4]
-    for (i = 0, ii = models.length; i < ii; i++) {
-      model = models[i];
+    angular.forEach(models, function (model, index) {
       if (sectionModels.indexOf(model) === -1) { /* [3] */
-        orderedRows[i] = this.newRow(section, model); /* [4] */
+        orderedRows[index] = this.newRow(section, model); /* [4] */
       }
-    }
+    }, this);
 
     // Replace the rows with our new rows in the correct order [5]
     // then store the removed rows on the section to check against [6]
