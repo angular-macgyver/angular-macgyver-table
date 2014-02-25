@@ -10,6 +10,7 @@ describe('Table section controller', function () {
       $scope,
       $element,
       $rootScope,
+      $animate,
       section;
 
   beforeEach(angular.mock.module('macTable'));
@@ -26,14 +27,15 @@ describe('Table section controller', function () {
       {name: 'John Lennon', band: 'Beatles', instrument: 'guitar'}
     ];
 
-    $element = angular.element('<div />');
+    $element   = angular.element('<div />');
     $rootScope = $injector.get('$rootScope');
-    Table = $injector.get('Table');
-    $scope = $rootScope.$new();
+    $animate   = $injector.get('$animate');
+    Table      = $injector.get('Table');
+    $scope     = $rootScope.$new();
 
     // Setup our table
     columns = ['name', 'band', 'instrument'];
-    table = new Table(columns);
+    $rootScope.table = table = new Table(columns);
 
     // Create mock transclude methods
     rowTransclude = function ($scope, fn) {
@@ -45,7 +47,7 @@ describe('Table section controller', function () {
     };
 
     tableSectionController =
-      new TableSectionController($scope, $element, $attrs);
+      new TableSectionController($scope, $element, $attrs, $animate);
 
     // Populate the controller w/ transcludes
     tableSectionController.table = table;
@@ -57,23 +59,31 @@ describe('Table section controller', function () {
   }));
 
   it('builds the correct rows with columns', function () {
-    tableSectionController.build(models);
+    $rootScope.$apply(function () {
+      tableSectionController.build(models);
+    });
     expect($element.find('row').length).toBe(4);
     expect($element.find('cell').length).toBe(12);
 
     // Grow
     models.unshift({
-      name: 'Keith Richards', instrument: 'guitar', band: 'Rolling Stones'});
+      name: 'Keith Richards', instrument: 'guitar', band: 'Rolling Stones'
+    });
     models.unshift({
-      name: 'George Harrison', instrument: 'guitar', band: 'Beatles'});
-    tableSectionController.build(models);
+      name: 'George Harrison', instrument: 'guitar', band: 'Beatles'
+    });
+    $rootScope.$apply(function () {
+      tableSectionController.build(models);
+    });
     expect($element.find('row').length).toBe(6);
     expect($element.find('cell').length).toBe(18);
 
     // Shrink
     models.pop();
     models.pop();
-    tableSectionController.build(models);
+    $rootScope.$apply(function () {
+      tableSectionController.build(models);
+    });
     expect($element.find('row').length).toBe(4);
     expect($element.find('cell').length).toBe(12);
   });
@@ -90,14 +100,18 @@ describe('Table section controller', function () {
   });
 
   it('uses the same cell elements', function () {
-    tableSectionController.build(models[0]);
+    $rootScope.$apply(function () {
+      tableSectionController.build(models[0]);
+    });
     $element.find('cell').eq(0).data('mark', 'cell-a');
     $element.find('cell').eq(1).data('mark', 'cell-b');
     $element.find('cell').eq(2).data('mark', 'cell-c');
 
     columns.reverse();
     table.loadColumns(columns);
-    tableSectionController.build(models[0]);
+    $rootScope.$apply(function () {
+      tableSectionController.build(models[0]);
+    });
     expect($element.find('cell').eq(2).data('mark')).toBe('cell-a');
     expect($element.find('cell').eq(1).data('mark')).toBe('cell-b');
     expect($element.find('cell').eq(0).data('mark')).toBe('cell-c');

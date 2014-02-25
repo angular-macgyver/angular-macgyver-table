@@ -20908,12 +20908,20 @@ var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
       $scope.tableModels.push({name: 'blah', twitter: '@blah'});
     }
   };
+
+  var quickAddRemoveCount = 0;
+
   $scope.startQuickAddRemove = function () {
     $scope.quickAddRemovePromise = $timeout(function () {
       if ($scope.tableModels.length) $scope.tableModels = [];
-      else $scope.addRows(50);
-      $scope.startQuickAddRemove();
-    }, 500);
+      else $scope.addRows(40);
+      if (quickAddRemoveCount < 10) {
+        quickAddRemoveCount++;
+        $scope.startQuickAddRemove();
+      } else {
+        quickAddRemoveCount = 0;
+      }
+    }, 50);
   };
   $scope.stopQuickAddRemove = function () {
     $timeout.cancel($scope.quickAddRemovePromise);
@@ -20926,12 +20934,17 @@ module.exports = ExampleController;
 },{}],7:[function(require,module,exports){
 'use strict';
 
-var TableSectionController = function ($scope, $element, $attrs) {
+var TableSectionController = function ($scope, $element, $attrs, $animate) {
   this.rowCellTemplates = {};
-  this.rowsMap = {};
-  this.rowCellsMaps = {};
-  this.rowTemplate = null;
-  this.table = null;
+  this.rowsMap          = {};
+  this.rowsOrder        = [];
+  this.rowCellsMaps     = {};
+  this.rowTemplate      = null;
+  this.table            = null;
+
+  var marker = angular.element('<!-- *~* -->');
+
+  $element.append(marker);
 
   this.getCellTranclude = function (cell) {
     var template, templateName;
@@ -20948,155 +20961,150 @@ var TableSectionController = function ($scope, $element, $attrs) {
   };
 
   this.build = function (models) {
-    var i, ii,
-        j, jj,
-        section,
-        row,
-        rows,
-        rowId,
-        rowBlock,
-        childRowScope,
-        nextRowsMap,
-        lastRowsMap,
-        cell,
-        cells,
-        cellBlock,
-        childCellScope,
-        colName,
-        cellElement,
-        nextCellsMap,
-        lastCellsMap,
-        cellScope,
-        cellTransclude;
+    var section;
 
     if (!this.rowTemplate) return;
 
     this.table.load($attrs.macTableSection, models);
     $scope.section = section = this.table.sections[$attrs.macTableSection];
-    rows = section.ctrl.getRows();
+    this.buildRows(section.rows);
+  };
 
-    lastRowsMap = this.rowsMap;
-    nextRowsMap = {};
+  this.buildRows = function (rows) {
+    /*
+     * Build Rows
+     */
+    var lastRowsMap     = this.rowsMap,
+        nextRowsMap     = {},
+        lastRowsOrder   = this.rowsOrder,
+        nextRowsOrder   = [],
+        previousElement = marker;
 
-    for (i = 0, ii = rows.length; i < ii; i++) {
-      row = rows[i];
-      rowId = row.id;
+    angular.forEach(rows, function tableRepeatRows (row, index) {
+      var rowId = row.id,
+          rowBlock,
+          childRowScope;
 
+      // Store the order of the rows so we can compare against them later
+      nextRowsOrder.push(rowId);
+
+      // Check if we already have a block for this row
       if (typeof lastRowsMap[rowId] !== 'undefined') {
         nextRowsMap[rowId] = rowBlock = lastRowsMap[rowId];
         delete lastRowsMap[rowId];
+        if (lastRowsOrder.indexOf(rowId) === index) {
+          console.log('no work!');
+          previousElement = rowBlock.clone;
+          return;
+        }
       } else {
-        nextRowsMap[rowId] = rowBlock = {};
+        nextRowsMap[rowId] = rowBlock = {row: row};
       }
 
       if (rowBlock.scope) {
         childRowScope = rowBlock.scope;
       } else {
         childRowScope = $scope.$new();
+        childRowScope.$watchCollection('table.columnsOrder', function watchColumnsOrder (columns) {
+          this.buildRowCells(rowBlock.row,
+                             rowBlock.clone,
+                             rowBlock.scope,
+                             columns);
+        }.bind(this));
       }
 
       if (!rowBlock.scope) {
         childRowScope.row = row;
         rowBlock.scope = childRowScope;
         this.rowTemplate(childRowScope, function rowTranscludeCB(clone) {
-          $element[0].appendChild(clone[0]);
+          $animate.enter(clone, null, previousElement);
           rowBlock.clone = clone;
         });
       } else {
-        // Be smarter about this... don't append unless the order has changed
-        $element[0].appendChild(rowBlock.clone[0]);
+        // Be smarter about this...
+        // don't append unless the order has changed
+        $animate.move(rowBlock.clone, null, previousElement);
       }
 
-      // Repeat cells
-      cells = row.cells;
-      lastCellsMap = this.rowCellsMaps[row.id] || {};
-      nextCellsMap = {};
-
-      for (j = 0, jj = row.cells.length; j < jj; j++) {
-        cell = row.cells[j];
-        colName = cell.column.colName;
-        this.buildRowCells(
-            cell, 
-            colName, 
-            rowBlock, 
-            childRowScope, 
-            lastCellsMap, 
-            nextCellsMap
-        );
-      }
-
-      for (colName in lastCellsMap) {
-        this.cleanUnusedCellsMap(colName, lastCellsMap);
-      }
-
-      this.rowCellsMaps[row.id] = nextCellsMap;
-    }
+      previousElement = rowBlock.clone;
+    }, this);
 
     // Removed any unused rows and delete them from the rows cells map
-    for (var key in lastRowsMap) {
-      this.cleanUnusedRowsMap(key, lastRowsMap);
-    }
+    angular.forEach(lastRowsMap, function tableCleanUnusedRows (row, rowId) {
+      var cellsMap,
+          colName;
 
-    this.rowsMap = nextRowsMap;
-  };
+      $animate.leave(lastRowsMap[rowId].clone);
+      lastRowsMap[rowId].scope.$destroy();
+      delete lastRowsMap[rowId];
 
-  this.cleanUnusedCellsMap = function (colName, cellsMap) {
-    cellsMap[colName].clone.remove();
-    cellsMap[colName].scope.$destroy();
-    delete cellsMap[colName];
-  };
+      // Remove all associated cells
+      cellsMap = this.rowCellsMaps[rowId];
 
-  this.cleanUnusedRowsMap = function (rowId, rowsMap) {
-    var cellsMap, colName;
-    rowsMap[rowId].clone.remove();
-    rowsMap[rowId].scope.$destroy();
-    delete rowsMap[rowId];
-    // Remove all associated cells
-    cellsMap = this.rowCellsMaps[rowId];
-    for (colName in cellsMap) {
-      this.cleanUnusedCellsMap(colName, cellsMap);
-    }
-    delete this.rowCellsMaps[rowId];
-  };
-
-  this.buildRowCells = function (cell, colName, rowBlock, childRowScope, lastCellsMap, nextCellsMap) {
-    var cellBlock,
-        childCellScope,
-        cellTransclude;
-
-    if (typeof lastCellsMap[colName] !== 'undefined') {
-      cellBlock = lastCellsMap[colName];
-      delete lastCellsMap[colName];
-    } else {
-      cellBlock = {};
-    }
-
-    if (cellBlock.scope) {
-      childCellScope = cellBlock.scope;
-    } else {
-      // This should probably check for the cell tranclude before making a
-      // possibly unneeded scope
-      childCellScope = childRowScope.$new();
-    }
-
-    if (!cellBlock.scope) {
-      childCellScope.cell = cell;
-      cellBlock.scope = childCellScope;
-      cellTransclude = this.getCellTranclude(cell);
-      if (cellTransclude) {
-        cellTransclude(childCellScope, function cellTranscludeCB(clone) {
-          rowBlock.clone[0].appendChild(clone[0]);
-          cellBlock.clone = clone;
-        });
+      for (colName in cellsMap) {
+        cellsMap[colName].clone.remove();
+        cellsMap[colName].scope.$destroy();
+        delete cellsMap[colName];
       }
-    } else {
-      rowBlock.clone[0].appendChild(cellBlock.clone[0]);
-    }
 
-    nextCellsMap[colName] = cellBlock;
+      delete this.rowCellsMaps[rowId];
+    }, this);
+
+    this.rowsMap   = nextRowsMap;
+    this.rowsOrder = nextRowsOrder;
   };
 
+  this.buildRowCells = function (row, rowElement, childRowScope, columns) {
+    var cells        = row.cells,
+        lastCellsMap = this.rowCellsMaps[row.id] || {},
+        nextCellsMap = {};
 
+    angular.forEach(columns, function tableRepeatCells (colName) {
+      var cellBlock,
+          childCellScope,
+          cellTransclude,
+          cell = row.cellsMap[colName];
+
+      if (typeof lastCellsMap[colName] !== 'undefined') {
+        cellBlock = lastCellsMap[colName];
+        delete lastCellsMap[colName];
+      } else {
+        cellBlock = {};
+      }
+
+      if (cellBlock.scope) {
+        childCellScope = cellBlock.scope;
+      } else {
+        // This should probably check for the cell tranclude before making a
+        // possibly unneeded scope
+        childCellScope = childRowScope.$new();
+      }
+
+      if (!cellBlock.scope) {
+        childCellScope.cell = cell;
+        cellBlock.scope = childCellScope;
+        cellTransclude = this.getCellTranclude(cell);
+        if (cellTransclude) {
+          cellTransclude(childCellScope, function cellTranscludeCB(clone) {
+            rowElement[0].appendChild(clone[0]);
+            cellBlock.clone = clone;
+          });
+        }
+      } else {
+        rowElement[0].appendChild(cellBlock.clone[0]);
+      }
+
+      nextCellsMap[colName] = cellBlock;
+    }, this);
+
+    angular.forEach(lastCellsMap, function (cell, colName) {
+      lastCellsMap[colName].clone.remove();
+      lastCellsMap[colName].scope.$destroy();
+      delete lastCellsMap[colName];
+    }, this);
+
+    this.rowCellsMaps[row.id] = nextCellsMap;
+  };
 };
 
 module.exports = TableSectionController;
@@ -21239,7 +21247,7 @@ var tableSectionDirective = function () {
   return {
     scope: true,
     require: ["^macTable", "macTableSection"],
-    controller: ['$scope', '$element', '$attrs', TableSectionController],
+    controller: ['$scope', '$element', '$attrs', '$animate', TableSectionController],
     link: function (scope, element, attrs, controllers) {
       controllers[1].table = controllers[0].table;
     }
@@ -21295,11 +21303,9 @@ var tableSectionModelsDirective = function () {
     require: "macTableSection",
     link: function (scope, element, attrs, controller) {
       var lastStringified, models;
-      scope.$watch(function () {
-        models = scope.$eval(attrs.macTableSectionModels);
+      scope.$watchCollection(attrs.macTableSectionModels, function watchTableSectionModels (models) {
         if (!models) return;
         controller.build(models);
-        return JSON.stringify(controller.table);
       });
     }
   };
