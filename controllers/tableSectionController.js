@@ -13,6 +13,11 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
 
   $element.append(marker);
 
+  $scope.$on('macTableSectionBuildRows', function () {
+    this.build();
+    console.log('built');
+  }.bind(this));
+
   this.getCellTranclude = function (cell) {
     var template, templateName;
 
@@ -34,7 +39,7 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
 
     this.table.load($attrs.macTableSection, models);
     $scope.section = section = this.table.sections[$attrs.macTableSection];
-    this.buildRows(section.rows);
+    this.buildRows(section.ctrl.getRows());
   };
 
   this.buildRows = function (rows) {

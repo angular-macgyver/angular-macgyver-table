@@ -4,7 +4,14 @@ var SHIFT_KEY = 16,
     COMMAND_KEY = 91,
     tableSelectableDirective;
 
-tableSelectableDirective = ['$document', function ($document) {
+tableSelectableDirective = [
+  '$document', 
+  '$window',
+  function (
+    $document,
+    $window
+  ) {
+
   var shiftselect = false,
       commandselect = false;
 
@@ -17,6 +24,10 @@ tableSelectableDirective = ['$document', function ($document) {
     if (event.which === SHIFT_KEY) shiftselect = false;
     if (event.which === COMMAND_KEY) commandselect = false;
   });
+
+  $window.onfocus = function () {
+    shiftselect = commandselect = false;
+  };
 
   return {
     controller: ['$scope', function ($scope) {
@@ -75,18 +86,25 @@ tableSelectableDirective = ['$document', function ($document) {
            * Normal select
            */
           } else {
+            // TODO: We end up calling `getRows` twice...
+            // once here and once again in `updateRange`
+            // try to reduce the call to only once
             rows     = $scope.section.ctrl.getRows();
             rowIndex = rows.indexOf(row);
 
+            // If we only have one row selected and it is the row that was just
+            // clicked, unselect the row
             if (selectedRange.length === 1 &&
                 selectedRange.indexOf(row.model) !== -1) {
               selectedRange = [];
+            // Otherwise, select only that row
             } else {
               selectedRange = [row.model];
             }
           }
 
           rangeController.setRangeModels(selectedRange);
+          rangeController.updateRange();
         });
       };
     }],

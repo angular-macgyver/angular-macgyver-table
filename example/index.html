@@ -18,12 +18,15 @@
   </style>
 </head>
 <body>
-  <table mac-table 
+  <table mac-table="exampleTable"
          mac-table-columns="tableColumns">
     <tbody mac-table-section="body" 
            mac-table-section-models="tableModels"
+           mac-table-section-controller="exampleTableController"
+           mac-table-section-selected-models="table.$parent.selectedModels"
            >
       <tr mac-table-row 
+          mac-table-selectable="true"
           ng-class="{selected: row.selected}">
         <td mac-cell-template="" 
             width="{{cell.column.width}}">
@@ -31,6 +34,7 @@
         </td>
       </tr>
     </tbody>
+    <!-- build our "new row" form -->
     <tbody>
       <tr>
         <td ng-repeat="column in table.columns">
@@ -43,6 +47,10 @@
   <button ng-click="addRows(1000)">Add 1000 Rows</button>
   <button ng-click="startQuickAddRemove()">Start Quick Add / Remove</button>
   <button ng-click="stopQuickAddRemove()">Stop Quick Add / Remove</button>
+  <button ng-click="$broadcast('macTableSectionBuildRows')">Build Rows</button>
+  <button ng-click="toggleReverse()">Reverse Rows</button>
+  <input ng-model="limitStart" type="number">
+  <input ng-model="limitEnd" type="number">
   <script src="main.js"></script>
 </body>
 </html>

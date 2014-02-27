@@ -20890,14 +20890,35 @@ module.exports = TableSection;
 },{}],6:[function(require,module,exports){
 'use strict';
 
-var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
+var ExampleController = [
+  '$scope', 
+  '$timeout', 
+  'Table',
+  'TableSectionController',
+  function (
+    $scope, 
+    $timeout,
+    Table,
+    TableSectionController
+  ) {
+
   var counter = 0;
 
   $scope.test = 'Hello World';
 
+  $scope.exampleTable = new Table();
   $scope.selectedModels = [];
   $scope.rowData = {};
   $scope.tableColumns = ['name', 'twitter'];
+  $scope.exampleTableController = TableSectionController.extend({
+    getRows: function () {
+      var rows = this.section.rows.slice(0);
+      console.log($scope.reverse, $scope.limitStart, $scope.limitEnd);
+      if ($scope.reverse) rows.reverse();
+      return rows.slice($scope.limitStart || 0, $scope.limitEnd || rows.length);
+    }
+  });
+
   $scope.tableModels = [
     {id: counter++, name: 'Colin Kahn', twitter: '@programmingwtf'},
     {id: counter++, name: 'Adrian Lee', twitter: '@adrianthemole'}
@@ -20912,6 +20933,10 @@ var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
       $scope.tableModels.push({id: counter++, name: 'blah', twitter: '@blah'});
     }
   };
+
+  $scope.$on('macTableLoadedModels:myTable', function () {
+    console.log('loaded some models!');
+  });
 
   var quickAddRemoveCount = 0;
 
@@ -20930,6 +20955,11 @@ var ExampleController = ['$scope', '$timeout', function ($scope, $timeout) {
   $scope.stopQuickAddRemove = function () {
     $timeout.cancel($scope.quickAddRemovePromise);
     delete $scope.quickAddRemovePromise;
+  };
+
+  $scope.toggleReverse = function () {
+    $scope.reverse = !$scope.reverse;
+    $scope.$broadcast('macTableSectionBuildRows');
   };
 }];
 
@@ -20950,6 +20980,11 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
   var marker = angular.element('<!-- *~* -->');
 
   $element.append(marker);
+
+  $scope.$on('macTableSectionBuildRows', function () {
+    this.build();
+    console.log('built');
+  }.bind(this));
 
   this.getCellTranclude = function (cell) {
     var template, templateName;
@@ -20972,7 +21007,7 @@ var TableSectionController = function ($scope, $element, $attrs, $animate) {
 
     this.table.load($attrs.macTableSection, models);
     $scope.section = section = this.table.sections[$attrs.macTableSection];
-    this.buildRows(section.rows);
+    this.buildRows(section.ctrl.getRows());
   };
 
   this.buildRows = function (rows) {
@@ -21126,7 +21161,7 @@ var TableSectionSelectedModelsController = function ($scope, $attrs, $parse) {
 
   this.selectedRange = [];
 
-  $scope.$watch(function () {
+  this.updateRange = function () {
     var i, ii,
         srcRange,
         range,
@@ -21169,9 +21204,9 @@ var TableSectionSelectedModelsController = function ($scope, $attrs, $parse) {
 
     this.selectedRange = range;
     setRangeModels($scope, range);
+  };
 
-    return JSON.stringify($scope.table);
-  }.bind(this));
+  $scope.$on('macTableSectionBuildRows', this.updateRange.bind(this));
 };
 
 module.exports = TableSectionSelectedModelsController;
@@ -21183,8 +21218,10 @@ var tableDirective = ['Table', function (Table) {
   return {
     scope: true,
     require: "macTable",
-    controller: ["$scope", function ($scope) {
-      this.table = $scope.table = new Table();
+    controller: ["$scope", "$attrs", function ($scope, $attrs) {
+      this.table = $scope.table =
+        $scope.$eval($attrs.macTable) || new Table();
+
       this.table.$parent = $scope.$parent;
     }],
     link: function (scope, element, attrs, controller) {
@@ -21344,7 +21381,14 @@ var SHIFT_KEY = 16,
     COMMAND_KEY = 91,
     tableSelectableDirective;
 
-tableSelectableDirective = ['$document', function ($document) {
+tableSelectableDirective = [
+  '$document', 
+  '$window',
+  function (
+    $document,
+    $window
+  ) {
+
   var shiftselect = false,
       commandselect = false;
 
@@ -21357,6 +21401,10 @@ tableSelectableDirective = ['$document', function ($document) {
     if (event.which === SHIFT_KEY) shiftselect = false;
     if (event.which === COMMAND_KEY) commandselect = false;
   });
+
+  $window.onfocus = function () {
+    shiftselect = commandselect = false;
+  };
 
   return {
     controller: ['$scope', function ($scope) {
@@ -21415,18 +21463,25 @@ tableSelectableDirective = ['$document', function ($document) {
            * Normal select
            */
           } else {
+            // TODO: We end up calling `getRows` twice...
+            // once here and once again in `updateRange`
+            // try to reduce the call to only once
             rows     = $scope.section.ctrl.getRows();
             rowIndex = rows.indexOf(row);
 
+            // If we only have one row selected and it is the row that was just
+            // clicked, unselect the row
             if (selectedRange.length === 1 &&
                 selectedRange.indexOf(row.model) !== -1) {
               selectedRange = [];
+            // Otherwise, select only that row
             } else {
               selectedRange = [row.model];
             }
           }
 
           rangeController.setRangeModels(selectedRange);
+          rangeController.updateRange();
         });
       };
     }],
@@ -21458,7 +21513,14 @@ angular.module('macTable')
 },{"./bower_components/angular/angular":1,"./controllers/exampleController":6,"./index":21}],19:[function(require,module,exports){
 'use strict';
 
-var TableFactory = ["TableSectionController", function (TableSectionController) {
+var TableFactory = [
+  '$rootScope',
+  'TableSectionController',
+  function (
+    $rootScope,
+    TableSectionController
+  ) {
+
   var Table,
       TableRow = require('../classes/tableRow'),
       TableColumn = require('../classes/tableColumn'),
@@ -21497,10 +21559,13 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
     else return models;
   };
 
+  var guid = 0;
+
   /*
   * Table Class Constructor
   */
   Table = function (columns, modelKey) {
+    this.name = 'myTable';
     this.sections = {};
     this.columnsOrder = [];
     this.columnsMap = {};
@@ -21560,6 +21625,8 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
 
     this.modelsMap = nextModelsMap;
     section.rows   = orderedRows;
+
+    $rootScope.$broadcast('macTableLoadedModels:' + this.name);
   };
 
   /*

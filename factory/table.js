@@ -1,6 +1,13 @@
 'use strict';
 
-var TableFactory = ["TableSectionController", function (TableSectionController) {
+var TableFactory = [
+  '$rootScope',
+  'TableSectionController',
+  function (
+    $rootScope,
+    TableSectionController
+  ) {
+
   var Table,
       TableRow = require('../classes/tableRow'),
       TableColumn = require('../classes/tableColumn'),
@@ -39,10 +46,13 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
     else return models;
   };
 
+  var guid = 0;
+
   /*
   * Table Class Constructor
   */
   Table = function (columns, modelKey) {
+    this.name = 'myTable';
     this.sections = {};
     this.columnsOrder = [];
     this.columnsMap = {};
@@ -102,6 +112,8 @@ var TableFactory = ["TableSectionController", function (TableSectionController) 
 
     this.modelsMap = nextModelsMap;
     section.rows   = orderedRows;
+
+    $rootScope.$broadcast('macTableLoadedModels:' + this.name);
   };
 
   /*

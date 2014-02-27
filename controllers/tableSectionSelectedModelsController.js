@@ -10,7 +10,7 @@ var TableSectionSelectedModelsController = function ($scope, $attrs, $parse) {
 
   this.selectedRange = [];
 
-  $scope.$watch(function () {
+  this.updateRange = function () {
     var i, ii,
         srcRange,
         range,
@@ -53,9 +53,9 @@ var TableSectionSelectedModelsController = function ($scope, $attrs, $parse) {
 
     this.selectedRange = range;
     setRangeModels($scope, range);
+  };
 
-    return JSON.stringify($scope.table);
-  }.bind(this));
+  $scope.$on('macTableSectionBuildRows', this.updateRange.bind(this));
 };
 
 module.exports = TableSectionSelectedModelsController;

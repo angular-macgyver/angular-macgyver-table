@@ -4,8 +4,10 @@ var tableDirective = ['Table', function (Table) {
   return {
     scope: true,
     require: "macTable",
-    controller: ["$scope", function ($scope) {
-      this.table = $scope.table = new Table();
+    controller: ["$scope", "$attrs", function ($scope, $attrs) {
+      this.table = $scope.table =
+        $scope.$eval($attrs.macTable) || new Table();
+
       this.table.$parent = $scope.$parent;
     }],
     link: function (scope, element, attrs, controller) {
